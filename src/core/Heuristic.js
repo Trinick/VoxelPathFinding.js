@@ -10,8 +10,8 @@ module.exports = {
    * @param {number} dy - Difference in y.
    * @return {number} dx + dy
    */
-  manhattan: function(dx, dy) {
-      return dx + dy;
+  manhattan: function(dx, dy, dz) {
+      return dx + dy + dz;
   },
 
   /**
@@ -20,8 +20,8 @@ module.exports = {
    * @param {number} dy - Difference in y.
    * @return {number} sqrt(dx * dx + dy * dy)
    */
-  euclidean: function(dx, dy) {
-      return Math.sqrt(dx * dx + dy * dy);
+  euclidean: function(dx, dy, dz) {
+      return Math.sqrt(dx * dx + dy * dy + dz * dz);
   },
 
   /**
@@ -30,8 +30,8 @@ module.exports = {
    * @param {number} dy - Difference in y.
    * @return {number} max(dx, dy)
    */
-  chebyshev: function(dx, dy) {
-      return Math.max(dx, dy);
+  chebyshev: function(dx, dy, dz) {
+      return Math.max(Math.max(dx, dy), dz);
   }
 
 };

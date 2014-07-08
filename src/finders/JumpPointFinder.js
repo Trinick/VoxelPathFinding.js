@@ -69,33 +69,35 @@ JumpPointFinder.prototype._identifySuccessors = function(node) {
         openList = this.openList,
         endX = this.endNode.x,
         endY = this.endNode.y,
+        endZ = this.endNode.z,
         neighbors, neighbor,
         jumpPoint, i, l,
-        x = node.x, y = node.y,
-        jx, jy, dx, dy, d, ng, jumpNode,
+        x = node.x, y = node.y, z = node.z,
+        jx, jy, jz, dx, dy, dz, d, ng, jumpNode,
         abs = Math.abs, max = Math.max;
 
     neighbors = this._findNeighbors(node);
     for(i = 0, l = neighbors.length; i < l; ++i) {
         neighbor = neighbors[i];
-        jumpPoint = this._jump(neighbor[0], neighbor[1], x, y);
+        jumpPoint = this._jump(neighbor[0], neighbor[1], neighbor[2], x, y, z);
         if (jumpPoint) {
 
             jx = jumpPoint[0];
             jy = jumpPoint[1];
-            jumpNode = grid.getNodeAt(jx, jy);
+            jz = jumpPoint[2];
+            jumpNode = grid.getNodeAt(jx, jy, jz);
 
             if (jumpNode.closed) {
                 continue;
             }
 
             // include distance, as parent may not be immediately adjacent:
-            d = Heuristic.euclidean(abs(jx - x), abs(jy - y));
+            d = Heuristic.euclidean(abs(jx - x), abs(jy - y), abs(jz - z));
             ng = node.g + d; // next `g` value
 
             if (!jumpNode.opened || ng < jumpNode.g) {
                 jumpNode.g = ng;
-                jumpNode.h = jumpNode.h || heuristic(abs(jx - endX), abs(jy - endY));
+                jumpNode.h = jumpNode.h || heuristic(abs(jx - endX), abs(jy - endY), abs(jz - endZ));
                 jumpNode.f = jumpNode.g + jumpNode.h;
                 jumpNode.parent = node;
 
@@ -117,57 +119,63 @@ JumpPointFinder.prototype._identifySuccessors = function(node) {
  * @return {Array.<[number, number]>} The x, y coordinate of the jump point
  *     found, or null if not found
  */
-JumpPointFinder.prototype._jump = function(x, y, px, py) {
+JumpPointFinder.prototype._jump = function(x, y, z, px, py, pz) {
     var grid = this.grid,
-        dx = x - px, dy = y - py;
+        dx = x - px, dy = y - py, dz = z - pz;
 
-    if (!grid.isWalkableAt(x, y)) {
+    if (!grid.isWalkableAt(x, y, z)) {
         return null;
     }
 
     if(this.trackJumpRecursion === true) {
-        grid.getNodeAt(x, y).tested = true;
+        grid.getNodeAt(x, y, z).tested = true;
     }
 
-    if (grid.getNodeAt(x, y) === this.endNode) {
-        return [x, y];
+    if (grid.getNodeAt(x, y, z) === this.endNode) {
+        return [x, y, z];
     }
 
     // check for forced neighbors
     // along the diagonal
-    if (dx !== 0 && dy !== 0) {
-        if ((grid.isWalkableAt(x - dx, y + dy) && !grid.isWalkableAt(x - dx, y)) ||
-            (grid.isWalkableAt(x + dx, y - dy) && !grid.isWalkableAt(x, y - dy))) {
-            return [x, y];
+    if (dx !== 0 && dy !== 0 && dz !== 0) {
+        if ((grid.isWalkableAt(x - dx, y + dy, z - dz) && !grid.isWalkableAt(x - dx, y, z - dz)) ||
+            (grid.isWalkableAt(x + dx, y - dy, z - dz) && !grid.isWalkableAt(x, y - dy, z - dz)) ||
+            (grid.isWalkableAt(x - dx, y + dy, z + dz) && !grid.isWalkableAt(x - dx, y, z + dz)) ||
+            (grid.isWalkableAt(x + dx, y - dy, z + dz) && !grid.isWalkableAt(x, y - dy, z + dz))) {
+            return [x, y, z];
         }
     }
     // horizontally/vertically
     else {
         if( dx !== 0 ) { // moving along x
-            if((grid.isWalkableAt(x + dx, y + 1) && !grid.isWalkableAt(x, y + 1)) ||
-               (grid.isWalkableAt(x + dx, y - 1) && !grid.isWalkableAt(x, y - 1))) {
-                return [x, y];
+            if((grid.isWalkableAt(x + dx, y + 1, z + 1) && !grid.isWalkableAt(x, y + 1, z + 1)) ||
+               (grid.isWalkableAt(x + dx, y - 1, z + 1) && !grid.isWalkableAt(x, y - 1, z + 1)) ||
+               (grid.isWalkableAt(x + dx, y + 1, z - 1) && !grid.isWalkableAt(x, y + 1, z - 1)) ||
+               (grid.isWalkableAt(x + dx, y - 1, z - 1) && !grid.isWalkableAt(x, y - 1, z - 1))) {
+                return [x, y, z];
             }
         }
         else {
-            if((grid.isWalkableAt(x + 1, y + dy) && !grid.isWalkableAt(x + 1, y)) ||
-               (grid.isWalkableAt(x - 1, y + dy) && !grid.isWalkableAt(x - 1, y))) {
-                return [x, y];
+            if((grid.isWalkableAt(x + 1, y + dy, z + 1) && !grid.isWalkableAt(x + 1, y, z + 1)) ||
+               (grid.isWalkableAt(x - 1, y + dy, z + 1) && !grid.isWalkableAt(x - 1, y, z + 1)) ||
+               (grid.isWalkableAt(x + 1, y + dy, z - 1) && !grid.isWalkableAt(x + 1, y, z - 1)) ||
+               (grid.isWalkableAt(x - 1, y + dy, z - 1) && !grid.isWalkableAt(x - 1, y, z - 1))) {
+                return [x, y, z];
             }
         }
     }
 
     // when moving diagonally, must check for vertical/horizontal jump points
-    if (dx !== 0 && dy !== 0) {
-        if (this._jump(x + dx, y, x, y) || this._jump(x, y + dy, x, y)) {
-            return [x, y];
+    if (dx !== 0 && dy !== 0 && dz !== 0) {
+        if (this._jump(x + dx, y, z, x, y, z) || this._jump(x, y + dy, z, x, y, z) || this._jump(x, y, z + dz, x, y, z)) {
+            return [x, y, z];
         }
     }
 
     // moving diagonally, must make sure one of the vertical/horizontal
     // neighbors is open to allow the path
-    if (grid.isWalkableAt(x + dx, y) || grid.isWalkableAt(x, y + dy)) {
-        return this._jump(x + dx, y + dy, x, y);
+    if (grid.isWalkableAt(x + dx, y, z) || grid.isWalkableAt(x, y + dy, z) || grid.isWalkableAt(x, y, z + dz)) {
+        return this._jump(x + dx, y + dy, z + dz, x, y, z);
     } else {
         return null;
     }
@@ -181,58 +189,64 @@ JumpPointFinder.prototype._jump = function(x, y, px, py) {
  */
 JumpPointFinder.prototype._findNeighbors = function(node) {
     var parent = node.parent,
-        x = node.x, y = node.y,
+        x = node.x, y = node.y, z = node.z,
         grid = this.grid,
-        px, py, nx, ny, dx, dy,
+        px, py, pz, nx, ny, nz, dx, dy, nz,
         neighbors = [], neighborNodes, neighborNode, i, l;
 
     // directed pruning: can ignore most neighbors, unless forced.
     if (parent) {
         px = parent.x;
         py = parent.y;
+        pz = parent.z;
         // get the normalized direction of travel
         dx = (x - px) / Math.max(Math.abs(x - px), 1);
         dy = (y - py) / Math.max(Math.abs(y - py), 1);
+        dz = (z - pz) / Math.max(Math.abs(z - pz), 1);
 
         // search diagonally
-        if (dx !== 0 && dy !== 0) {
-            if (grid.isWalkableAt(x, y + dy)) {
-                neighbors.push([x, y + dy]);
-            }
-            if (grid.isWalkableAt(x + dx, y)) {
-                neighbors.push([x + dx, y]);
-            }
-            if (grid.isWalkableAt(x, y + dy) || grid.isWalkableAt(x + dx, y)) {
-                neighbors.push([x + dx, y + dy]);
-            }
-            if (!grid.isWalkableAt(x - dx, y) && grid.isWalkableAt(x, y + dy)) {
-                neighbors.push([x - dx, y + dy]);
-            }
-            if (!grid.isWalkableAt(x, y - dy) && grid.isWalkableAt(x + dx, y)) {
-                neighbors.push([x + dx, y - dy]);
+        if (dx !== 0 && dy !== 0 && dz !== 0) {
+            for(var cz = -1; cz < 2; cz++) {
+                if (grid.isWalkableAt(x, y + dy, z + cz)) {
+                    neighbors.push([x, y + dy, z + cz]);
+                }
+                if (grid.isWalkableAt(x + dx, y, z + cz)) {
+                    neighbors.push([x + dx, y, z + cz]);
+                }
+                if (grid.isWalkableAt(x, y + dy, z + cz) || grid.isWalkableAt(x + dx, y, z + cz)) {
+                    neighbors.push([x + dx, y + dy, z + cz]);
+                }
+                if (!grid.isWalkableAt(x - dx, y, z + cz) && grid.isWalkableAt(x, y + dy, z + cz)) {
+                    neighbors.push([x - dx, y + dy, z + cz]);
+                }
+                if (!grid.isWalkableAt(x, y - dy, z + cz) && grid.isWalkableAt(x + dx, y, z + cz)) {
+                    neighbors.push([x + dx, y - dy, z + cz]);
+                }
             }
         }
         // search horizontally/vertically
         else {
-            if(dx === 0) {
-                if (grid.isWalkableAt(x, y + dy)) {
-                    neighbors.push([x, y + dy]);
-                    if (!grid.isWalkableAt(x + 1, y)) {
-                        neighbors.push([x + 1, y + dy]);
-                    }
-                    if (!grid.isWalkableAt(x - 1, y)) {
-                        neighbors.push([x - 1, y + dy]);
+            for(var cz = -1; cz < 2; cz++) {
+                if(dx === 0) {
+                    if (grid.isWalkableAt(x, y + dy, cz+z)) {
+                        neighbors.push([x, y + dy, cz+z]);
+                        if (!grid.isWalkableAt(x + 1, y, cz+z)) {
+                            neighbors.push([x + 1, y + dy, cz+z]);
+                        }
+                        if (!grid.isWalkableAt(x - 1, y, cz+z)) {
+                            neighbors.push([x - 1, y + dy, cz+z]);
+                        }
                     }
                 }
-            }
-            else {
-                if (grid.isWalkableAt(x + dx, y)) {
-                    neighbors.push([x + dx, y]);
-                    if (!grid.isWalkableAt(x, y + 1)) {
-                        neighbors.push([x + dx, y + 1]);
-                    }
-                    if (!grid.isWalkableAt(x, y - 1)) {
-                        neighbors.push([x + dx, y - 1]);
+                else {
+                    if (grid.isWalkableAt(x + dx, y, cz+z)) {
+                        neighbors.push([x + dx, y, cz+z]);
+                        if (!grid.isWalkableAt(x, y + 1, cz+z)) {
+                            neighbors.push([x + dx, y + 1, cz+z]);
+                        }
+                        if (!grid.isWalkableAt(x, y - 1, cz+z)) {
+                            neighbors.push([x + dx, y - 1, cz+z]);
+                        }
                     }
                 }
             }
@@ -243,7 +257,7 @@ JumpPointFinder.prototype._findNeighbors = function(node) {
         neighborNodes = grid.getNeighbors(node, true);
         for (i = 0, l = neighborNodes.length; i < l; ++i) {
             neighborNode = neighborNodes[i];
-            neighbors.push([neighborNode.x, neighborNode.y]);
+            neighbors.push([neighborNode.x, neighborNode.y, neighborNode.z]);
         }
     }
 

@@ -19,6 +19,11 @@ function Node(x, y, walkable) {
      */
     this.y = y;
     /**
+     * The z coordinate of the node on the grid.
+     * @type number
+     */
+    this.z = z;
+    /**
      * Whether this node can be walked through.
      * @type boolean
      */
